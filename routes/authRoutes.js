@@ -6,6 +6,26 @@ import jwt from "jsonwebtoken";
 const router = express.Router();
 const saltRounds = 10;
 
+function verifyAdmin(req, res, next) {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ error: "Invalid User Authorization" });
+    }
+
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (decoded.role !== "Admin") {
+      return res.status(403).json({ error: "Invalid User Authorization" });
+    }
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: "Invalid User Authorization" });
+  }
+}
+
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -51,7 +71,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
-router.post("/coordinator/register", async (req, res) => {
+router.post("/coordinator/register", verifyAdmin, async (req, res) => {
   const {
     email,
     password,
@@ -75,9 +95,7 @@ router.post("/coordinator/register", async (req, res) => {
     }
 
     if (checkResult.rows.length > 0) {
-      return res
-        .status(409)
-        .json({ error: "This email is already in use please login" });
+      return res.status(409).json({ error: "This email is already in use" });
     } else {
       bcrypt.hash(password, saltRounds, async (err, hash) => {
         if (err) {
@@ -91,7 +109,7 @@ router.post("/coordinator/register", async (req, res) => {
       });
 
       res.status(200).json({
-        message: "Login successful!",
+        message: "registration successful!",
       });
     }
   } catch (error) {
